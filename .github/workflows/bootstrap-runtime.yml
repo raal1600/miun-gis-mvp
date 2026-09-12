@@ -1,0 +1,51 @@
+name: Bootstrap public GIS runtime
+
+on:
+  push:
+    paths:
+      - .github/workflows/bootstrap-runtime.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish-runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - name: Download private-source build snapshot
+        env:
+          SOURCE_URL: "https://sdmntprukwest.oaiusercontent.com/files/00000000-8544-8243-9e01-a2cc4c54b79d/raw?se=2026-09-12T22%3A17%3A40Z&sp=r&sv=2026-02-06&sr=b&scid=1ad213ea-1dd7-5a84-94d7-e2eb7c573512&skoid=b971d227-1348-4524-8797-edb0fdf15147&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-12T06%3A58%3A36Z&ske=2026-09-13T06%3A58%3A36Z&sks=b&skv=2026-02-06&sig=pNHKESGtfBmQ8YtoQ%2Bmq5TsFxsALlN8CHGWC7ISO0vI%3D"
+        run: |
+          curl --fail --location --retry 3 "$SOURCE_URL" -o /tmp/source.zip
+          rm -rf /tmp/src /tmp/public
+          mkdir -p /tmp/src /tmp/public/data /tmp/public/vendor
+          unzip -q /tmp/source.zip -d /tmp/src
+      - name: Build minified browser runtime only
+        run: |
+          npx --yes esbuild@0.25.9 /tmp/src/app.mjs --bundle --minify --target=es2020 --platform=browser --format=esm --legal-comments=none --sourcemap=false --outfile=/tmp/public/app.js
+          npx --yes esbuild@0.25.9 /tmp/src/style.css --minify --legal-comments=none --outfile=/tmp/public/style.css
+          python - <<'PY'
+          from pathlib import Path
+          src=Path('/tmp/src'); out=Path('/tmp/public')
+          html=(src/'index.html').read_text()
+          html=html.replace('src="./app.mjs"','src="./app.js"')
+          (out/'index.html').write_text(html)
+          (out/'favicon.svg').write_bytes((src/'favicon.svg').read_bytes())
+          for n in ['sample.json','geography.geojson']:(out/'data'/n).write_bytes((src/'data'/n).read_bytes())
+          for n in ['leaflet.js','leaflet.css','Leaflet-LICENSE']:(out/'vendor'/n).write_bytes((src/'vendor'/n).read_bytes())
+          (out/'.nojekyll').write_text('')
+          PY
+      - name: Replace deploy-only runtime
+        run: |
+          find . -mindepth 1 -maxdepth 1 ! -name .git ! -name .github ! -name README.md -exec rm -rf {} +
+          cp -a /tmp/public/. .
+          git add index.html app.js style.css favicon.svg data vendor .nojekyll
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'deploy: publish minified GIS MVP runtime' || exit 0
+          git push
