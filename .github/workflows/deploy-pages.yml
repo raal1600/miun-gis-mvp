@@ -7,6 +7,7 @@ on:
       - index.html
       - app.js
       - style.css
+      - feedback.css
       - favicon.svg
       - data/**
       - vendor/**
@@ -30,28 +31,50 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - name: Verify deploy-only runtime
+        with:
+          persist-credentials: false
+      - name: Verify and stage runtime-only files
         run: |
-          test -s index.html
-          test -s app.js
-          test -s style.css
-          test -s data/sample.json
-          test -s data/geography.geojson
-          test -s vendor/leaflet.js
-          test ! -e app.mjs
-          test ! -e model.mjs
-          test ! -e i18n.mjs
-          test ! -d tests
-          test ! -d scripts
-          test -z "$(find . -type f \( -name '*.xlsx' -o -name '*.map' \) -print -quit)"
+          python - <<'PY'
+          from pathlib import Path
+          import shutil
+          required = ['index.html','app.js','style.css','feedback.css','favicon.svg','data/sample.json','data/geography.geojson','data/map-context.geojson','vendor/leaflet.js','vendor/leaflet.css','vendor/Leaflet-LICENSE']
+          for name in required:
+              source = Path(name)
+              if not source.is_file() or source.stat().st_size == 0:
+                  raise SystemExit('Missing runtime file: '+name)
+              if source.is_symlink():
+                  raise SystemExit('Refusing symlink: '+name)
+          for name in ['app.mjs','model.mjs','i18n.mjs','feedback.mjs','tests','scripts']:
+              if Path(name).exists():
+                  raise SystemExit('Unexpected development file: '+name)
+          for p in Path('.').rglob('*'):
+              if '.git' in p.parts or not p.is_file():
+                  continue
+              if p.suffix.lower() in ['.xlsx','.xls','.map','.mjs','.py']:
+                  raise SystemExit('Unexpected source or workbook: '+str(p))
+          html=Path('index.html').read_text()
+          if 'app.mjs' in html or 'data-i18n="presentation"' in html:
+              raise SystemExit('Private source or presentation reference in HTML')
+          for name in ['app.js','style.css','feedback.css','vendor/leaflet.js']:
+              if 'sourceMappingURL=' in Path(name).read_text():
+                  raise SystemExit('Source map reference: '+name)
+          out=Path('_site')
+          if out.exists(): shutil.rmtree(out)
+          for name in required:
+              target=out/name
+              target.parent.mkdir(parents=True,exist_ok=True)
+              shutil.copy2(name,target)
+          (out/'.nojekyll').touch()
+          if Path('LICENSE').is_file(): shutil.copy2('LICENSE',out/'LICENSE')
+          print('Staged only browser runtime assets and licence notices.')
+          PY
       - name: Configure Pages
         uses: actions/configure-pages@v6
-        with:
-          enablement: true
       - name: Upload static site
         uses: actions/upload-pages-artifact@v5
         with:
-          path: .
+          path: _site
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v5
