@@ -1,0 +1,22 @@
+{
+  "release": "f21bc29cf4475308ed2e525673852f294c2beff4e3ff1613b757e494371ce5d5",
+  "sourceWorkbookSha256": "b1b000ec2b1770ef29157005fb321d331617de540c086753b96e444f8043c5b3",
+  "files": {
+    ".nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "accessibility.html": "2f233acb8ee1c0ca8d45c4cd2afd4b0121fad16d73479230b61709dacdae89f7",
+    "app.js": "85252b4ddd6325ade13cd624d1ba1158370929fa568074b96818b87e3c3f7790",
+    "assets/interreg-eu.png": "83c0f8edfd21fcfe4b2344823172d32cb51b00c5586745a5ac82b15f07196f38",
+    "assets/miun.png": "2552c5d1f5b05764bb1dc7720ef6af5a91060270e83cb7832b7b7af8c1d33a00",
+    "assets/nord.png": "2e706587e902ed7ca99cd439160dbfcfb97eb69ef18dac910041058ba13c3677",
+    "data/geography.geojson": "ec4a1f18e89dd4818a982e608c72d8b6e3c26e906cb58a252c9e8ea723ee3f54",
+    "data/map-context.geojson": "b58c9ea49a186a2828ac75f8276661d6ceb92c1c9239a4fd03883cbd27cda51c",
+    "data/survey.json": "e4ff02d30a3daa95f09c75959b2390f83d6ad7730d261c39c45416f7cadb22ee",
+    "favicon.svg": "be51c8e743afd48bd28b3aa5c3847b6b0881ac8cb26f5eaf2a422e8884ae3d4b",
+    "index.html": "59a5f8a167b15f0a93a0fd2884a5131f027e3af36ac4cf50909917535db023a4",
+    "method.html": "c50667a74c261da18cb8084afb55cd4fe4326cd5bcdc3e58e6f1e62729ff637d",
+    "style.css": "c4b93887761887257415efaa136388dff565aa9e64959b247048827da4860998",
+    "vendor/Leaflet-LICENSE": "53e8dc25862014e4324741ca18fbe3611e11d42ef69f59f86ea8c5389647d4cb",
+    "vendor/leaflet.css": "a7837102824184820dfa198d1ebcd109ff6d0ff9a2672a074b9a1b4d147d04c6",
+    "vendor/leaflet.js": "dc71f8a6880bc3ca1bd9fa8dc5f1af48c702dc510b0a78240a07c5feed7ce935"
+  }
+}

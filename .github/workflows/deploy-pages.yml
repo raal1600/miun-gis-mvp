@@ -1,80 +1,90 @@
-name: Deploy live demo to GitHub Pages
-
+name: Publicera GIS – kravtester och verifierad liveversion
 on:
   push:
     branches: [main]
-    paths:
-      - index.html
-      - app.js
-      - style.css
-      - feedback.css
-      - favicon.svg
-      - data/**
-      - vendor/**
-      - .github/workflows/deploy-pages.yml
   workflow_dispatch:
-
 permissions:
   contents: read
   pages: write
   id-token: write
-
 concurrency:
   group: pages
-  cancel-in-progress: true
-
+  cancel-in-progress: false
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  requirements:
+    name: 01 · Kravtester före publicering
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      release: ${{ steps.release.outputs.id }}
     steps:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - name: Verify and stage runtime-only files
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: .github/package-lock.json
+      - name: Installera låsta E2E- och tillgänglighetsverktyg
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          import shutil
-          required = ['index.html','app.js','style.css','feedback.css','favicon.svg','data/sample.json','data/geography.geojson','data/map-context.geojson','vendor/leaflet.js','vendor/leaflet.css','vendor/Leaflet-LICENSE']
-          for name in required:
-              source = Path(name)
-              if not source.is_file() or source.stat().st_size == 0:
-                  raise SystemExit('Missing runtime file: '+name)
-              if source.is_symlink():
-                  raise SystemExit('Refusing symlink: '+name)
-          for name in ['app.mjs','model.mjs','i18n.mjs','feedback.mjs','tests','scripts']:
-              if Path(name).exists():
-                  raise SystemExit('Unexpected development file: '+name)
-          for p in Path('.').rglob('*'):
-              if '.git' in p.parts or not p.is_file():
-                  continue
-              if p.suffix.lower() in ['.xlsx','.xls','.map','.mjs','.py']:
-                  raise SystemExit('Unexpected source or workbook: '+str(p))
-          html=Path('index.html').read_text()
-          if 'app.mjs' in html or 'data-i18n="presentation"' in html:
-              raise SystemExit('Private source or presentation reference in HTML')
-          for name in ['app.js','style.css','feedback.css','vendor/leaflet.js']:
-              if 'sourceMappingURL=' in Path(name).read_text():
-                  raise SystemExit('Source map reference: '+name)
-          out=Path('_site')
-          if out.exists(): shutil.rmtree(out)
-          for name in required:
-              target=out/name
-              target.parent.mkdir(parents=True,exist_ok=True)
-              shutil.copy2(name,target)
-          (out/'.nojekyll').touch()
-          if Path('LICENSE').is_file(): shutil.copy2('LICENSE',out/'LICENSE')
-          print('Staged only browser runtime assets and licence notices.')
-          PY
-      - name: Configure Pages
-        uses: actions/configure-pages@v6
-      - name: Upload static site
-        uses: actions/upload-pages-artifact@v5
+          npm ci --prefix .github
+          node .github/node_modules/playwright/cli.js install --with-deps chromium
+      - name: Kontrollera filhashar och bygg publiceringspaketet
+        run: node .github/stage-runtime.cjs
+      - name: Ingrid och Barbro – alla mått, grupper, skalor, mobil, tangentbord och WCAG
+        env:
+          SITE_ROOT: _site
+          RESULTS_DIR: test-results
+        run: node .github/tests/research-e2e.cjs
+      - name: Lås den testade versionen
+        id: release
+        run: echo "id=$(node -p 'require("./release.json").release')" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: 01-Kravtester-E2E-WCAG-skarmbilder
+          path: test-results
+          retention-days: 30
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
-      - name: Deploy
+  deploy:
+    name: 02 · Publicera verifierad visualisering
+    needs: requirements
+    runs-on: ubuntu-latest
+    outputs:
+      url: ${{ steps.deployment.outputs.page_url }}
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@v5
         id: deployment
-        uses: actions/deploy-pages@v5
+  live:
+    name: 03 · E2E på publicerad version
+    needs: [requirements, deploy]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - run: npm ci --prefix .github
+      - run: node .github/node_modules/playwright/cli.js install --with-deps chromium
+      - name: Kontrollera rätt liveversion och kör hela E2E-sviten igen
+        env:
+          BASE_URL: ${{ needs.deploy.outputs.url }}
+          EXPECTED_RELEASE: ${{ needs.requirements.outputs.release }}
+          RESULTS_DIR: test-results
+        run: node .github/tests/research-e2e.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: 03-Liveverifiering-E2E-WCAG-skarmbilder
+          path: test-results
+          retention-days: 30
