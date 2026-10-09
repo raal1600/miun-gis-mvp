@@ -16,7 +16,11 @@ async function main(){try{
  await check('01 Publicering – exakt version, filhashar och inga utvecklingsfiler',async()=>{
   const response=await context.request.get(base+'release.json');assert.equal(response.status(),200);const manifest=await response.json();if(process.env.EXPECTED_RELEASE)assert.equal(manifest.release,process.env.EXPECTED_RELEASE);
   assert.equal(Object.keys(manifest.files).length,16);
-  for(const [name,hash] of Object.entries(manifest.files)){const r=await context.request.get(base+name);assert.equal(r.status(),200,name);assert.equal(crypto.createHash('sha256').update(await r.body()).digest('hex'),hash,name);}
+  for(const [name,hash] of Object.entries(manifest.files)){
+   // .nojekyll is an empty deployment marker, not a browser asset. Pages can
+   // return 404 for it; stage-runtime verifies its bytes before publication.
+   if(name==='.nojekyll'&&process.env.BASE_URL){assert.equal(hash,crypto.createHash('sha256').update('').digest('hex'));continue;}
+   const r=await context.request.get(base+name);assert.equal(r.status(),200,name);assert.equal(crypto.createHash('sha256').update(await r.body()).digest('hex'),hash,name);}
   for(const name of ['app.mjs','model.mjs','app.js.map','tests/fixtures/survey-source.json','scripts/import_survey.py','package.json','slides.md','.git/config','data/sample.json'])assert.ok([404,410].includes((await context.request.get(base+name)).status()),name);
  });
  const data=await (await context.request.get(base+'data/survey.json')).json();
