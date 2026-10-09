@@ -1,5 +1,5 @@
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
-const expected=['.nojekyll','index.html','app.js','style.css','favicon.svg','method.html','accessibility.html','data/survey.json','data/geography.geojson','data/map-context.geojson','vendor/leaflet.js','vendor/leaflet.css','vendor/Leaflet-LICENSE','assets/interreg-eu.png','assets/miun.png','assets/nord.png'];
+const expected=['.nojekyll','index.html','app.js','style.css','favicon.svg','method.html','data/survey.json','data/geography.geojson','data/map-context.geojson','vendor/leaflet.js','vendor/leaflet.css','vendor/Leaflet-LICENSE','assets/interreg-eu.png','assets/miun.png','assets/nord.png'];
 const manifest=JSON.parse(fs.readFileSync('release.json'));if(JSON.stringify(Object.keys(manifest.files).sort())!==JSON.stringify(expected.sort()))throw Error('Runtime allow-list mismatch');
 fs.rmSync('_site',{recursive:true,force:true});for(const name of expected.concat('release.json')){const stat=fs.lstatSync(name);if(!stat.isFile()||stat.isSymbolicLink())throw Error('Not a regular runtime file '+name);const data=fs.readFileSync(name);if(name!=='release.json'&&crypto.createHash('sha256').update(data).digest('hex')!==manifest.files[name])throw Error('Hash mismatch '+name);const to=path.join('_site',name);fs.mkdirSync(path.dirname(to),{recursive:true});fs.writeFileSync(to,data);}
-console.log('Staged verified release '+manifest.release+'; 17 runtime files.');
+console.log('Staged verified release '+manifest.release+'; 16 runtime files.');

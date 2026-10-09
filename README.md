@@ -8,7 +8,9 @@ Forskargruppens enkät: fem ämnesområden, 162 mått och kommungrupper per vari
 
 Detta är en arbetsversion för forskargranskning. Norska resultat och vissa metadata behöver slutligt besked. 50 tvetydiga kommunvärden har undantagits. Kohortdata har inte levererats. Inga saknade resultat har uppskattats.
 
-[Metod och hela dokumentationen](https://raal1600.github.io/miun-gis-mvp/method.html) · [Tillgänglighetsinformation](https://raal1600.github.io/miun-gis-mvp/accessibility.html)
+[Metod och hela dokumentationen](https://raal1600.github.io/miun-gis-mvp/method.html)
+
+UI behåller den ursprungliga navigationen, yrkesprofilen och båda jämförelsekolumnerna. Endast forskarnas bildkommentarer ändrar gränssnittet. Extra tolknings- och granskningsblock har tagits bort; datauppdateringen är oförändrad. E2E 10 kontrollerar denna avgränsning.
 
 ## Publicering och tester
 Workflow **Publicera GIS – kravtester och verifierad liveversion** innehåller:
@@ -18,9 +20,9 @@ Workflow **Publicera GIS – kravtester och verifierad liveversion** innehåller
 
 Skärmbilder och rapporter finns som Actions-artefakter. Automatisk tillgänglighetskontroll ersätter inte manuell skärmläsargranskning eller en beslutad tillgänglighetsredogörelse.
 
-17 runtimefiler publiceras. Testverktygen under `.github/` kopieras aldrig till webbservern. Originalarbetsbok och intern testfixtur finns inte i detta repo. `release.json` beskriver exakt version och filhashar.
+16 runtimefiler publiceras. Testverktygen under `.github/` kopieras aldrig till webbservern. Originalarbetsbok och intern testfixtur finns inte i detta repo. `release.json` beskriver exakt version och filhashar.
 
 ## Hosting
-Statisk HTTPS-hosting på Linux eller Windows. Ingen databas, GIS-server, Node-server eller CMS behövs i drift. Hela webbpaketet är cirka 0,82 MB okomprimerat. Kartdata och Leaflet levereras lokalt.
+Statisk HTTPS-hosting på Linux eller Windows. Ingen databas, GIS-server, Node-server eller CMS behövs i drift. Hela webbpaketet är cirka 0,83 MB okomprimerat. Kartdata och Leaflet levereras lokalt.
 
 Geografi: SCB CC0; Kartverket CC BY 4.0. Leaflet BSD-2-Clause, licens under `vendor/`. Ingen individdata, extern baskarta eller spårningskod. Offentligt visade aggregerade data går tekniskt att läsa även utan nedladdningsknapp.

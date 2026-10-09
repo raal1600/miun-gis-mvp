@@ -32,7 +32,7 @@ jobs:
           node .github/node_modules/playwright/cli.js install --with-deps chromium
       - name: Kontrollera filhashar och bygg publiceringspaketet
         run: node .github/stage-runtime.cjs
-      - name: Ingrid och Barbro – alla mått, grupper, skalor, mobil, tangentbord och WCAG
+      - name: Bildernas UI-krav, yrkesprofil, 162 mått och tillgänglighet
         env:
           SITE_ROOT: _site
           RESULTS_DIR: test-results
