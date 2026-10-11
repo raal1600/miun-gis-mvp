@@ -28,3 +28,5 @@ Skärmbilder och rapporter finns som Actions-artefakter. Automatisk tillgänglig
 Statisk HTTPS-hosting på Linux eller Windows. Ingen databas, GIS-server, Node-server eller CMS behövs i drift. Hela webbpaketet är cirka 0,84 MB okomprimerat. Kartdata och Leaflet levereras lokalt.
 
 Geografi: SCB CC0; Kartverket CC BY 4.0. Leaflet BSD-2-Clause, licens under `vendor/`. Ingen individdata, extern baskarta eller spårningskod. Offentligt visade aggregerade data går tekniskt att läsa även utan nedladdningsknapp.
+
+Tillgänglighetsgranskningen den 11 oktober kompletterar befintliga funktioner: kartinformation kan hovras och stängas med Escape, enkätens deltagartext döljs i kohortläget, och radbrytning fungerar vid större textavstånd på små skärmar. E2E 14–15 bevakar detta; totalt körs 16 E2E-grupper.

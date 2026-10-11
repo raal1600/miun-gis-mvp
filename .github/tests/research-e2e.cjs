@@ -10,7 +10,10 @@ async function chooseMunicipalities(ids){if(await page.locator('#municipality-pi
 async function clickMunicipality(id){
  const polygon=page.locator('path[data-municipality="'+id+'"]');await polygon.scrollIntoViewIfNeeded();
  // Click an actual visible point inside the polygon, not its possibly exterior bounding-box centre.
- const point=await polygon.evaluate(p=>{const r=p.getBoundingClientRect();for(let y=Math.max(0,r.top)+1;y<Math.min(innerHeight,r.bottom);y+=2)for(let x=Math.max(0,r.left)+1;x<Math.min(innerWidth,r.right);x+=2)if(document.elementFromPoint(x,y)===p)return{x,y};});
+ const visiblePoint=()=>polygon.evaluate(p=>{const r=p.getBoundingClientRect();for(let y=Math.max(0,r.top)+1;y<Math.min(innerHeight,r.bottom);y+=2)for(let x=Math.max(0,r.left)+1;x<Math.min(innerWidth,r.right);x+=2)if(document.elementFromPoint(x,y)===p)return{x,y};});
+ let point=await visiblePoint();
+ // A hovered neighbour may cover a small polygon. Dismiss its information first.
+ if(!point&&await page.locator('.leaflet-tooltip').count()){await page.keyboard.press('Escape');await page.waitForFunction(()=>!document.querySelector('.leaflet-tooltip'));point=await visiblePoint();}
  assert.ok(point,'Visible clickable polygon: '+id);await page.mouse.click(point.x,point.y);
 }
 async function axe(name){const result=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze();fs.writeFileSync(path.join(out,'axe-'+name+'.json'),JSON.stringify(result,null,2));assert.deepEqual(result.violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>n.target)})),[],name);}
@@ -58,7 +61,7 @@ async function main(){try{
  await check('05 Dataleverans – procent, kön, norska, delningslänk och tom kohort',async()=>{
   await ready('?variable=housing-h&municipality=SE-2326');assert.equal(await page.locator('#sex').inputValue(),'men');assert.match(await page.locator('#primary-value').textContent(),/%/);assert.match(await page.locator('#table-body tr').first().textContent(),/procentenheter/);
   await page.locator('[data-lang="nb"]').click();assert.equal(await page.locator('html').getAttribute('lang'),'nb');assert.equal(await page.locator('#sex option:checked').textContent(),'Gutter');const url=page.url();await page.reload();await page.waitForSelector('#application:not([hidden])');assert.equal(page.url(),url);assert.match(await page.locator('#legend-title').textContent(),/prosent/);
-  await page.locator('[data-study="cohort"]').click();assert.equal(await page.locator('#survey-panel').isVisible(),false);assert.match(await page.locator('#cohort-panel').textContent(),/ennå ikke tilgjengelige/);await page.reload();await page.waitForSelector('#cohort-panel:not([hidden])');assert.equal(await page.locator('#survey-panel').isVisible(),false);
+  await page.locator('[data-study="cohort"]').click();assert.equal(await page.locator('#survey-panel').isVisible(),false);assert.match(await page.locator('#cohort-panel').textContent(),/ennå ikke tilgjengelige/);assert.equal(await page.locator('.study-context').isVisible(),false);await page.reload();await page.waitForSelector('#cohort-panel:not([hidden])');assert.equal(await page.locator('#survey-panel').isVisible(),false);
  });
  await check('06 Ingrid – hela kartan på laptop, mobil 320/390 px och EU-emblemets storlek',async()=>{
   for(const viewport of [{width:1366,height:768},{width:1280,height:720},{width:390,height:844},{width:320,height:740}]){await page.setViewportSize(viewport);await ready();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'page overflow '+viewport.width);assert.equal(await page.locator('#municipality-picker').count(),1);assert.equal(await page.locator('select#municipality,select#compare').count(),0);const map=await page.locator('#map').boundingBox();if(viewport.width>=1280){assert.ok(map.y+map.height<=viewport.height,JSON.stringify(map));const legend=await page.locator('.legend').boundingBox();assert.ok(legend.y+legend.height<=viewport.height,JSON.stringify(legend));}
@@ -145,6 +148,33 @@ async function main(){try{
   await page.reload();await page.waitForSelector('path[data-municipality]');await assertSelection([]);
   await page.setViewportSize({width:1366,height:768});
  });
- await check('14 Robusthet – inga JavaScript-undantag i användarflödena',async()=>assert.deepEqual(errors,[]));
+ await check('14 Barbro – kartinformation går att hovra, läsa med fokus och stänga med Escape',async()=>{
+  await page.setViewportSize({width:1366,height:768});await ready('?variable=interest-d&municipality=SE-2326');
+  const polygon=page.locator('path[data-municipality="SE-2326"]'),url=page.url();
+  const point=await polygon.evaluate(p=>{const r=p.getBoundingClientRect();for(let y=r.top+1;y<r.bottom;y+=2)for(let x=r.left+1;x<r.right;x+=2)if(document.elementFromPoint(x,y)===p)return{x,y};});assert.ok(point);await page.mouse.move(point.x,point.y);const tooltip=page.locator('#'+await polygon.getAttribute('aria-describedby'));
+  await tooltip.waitFor({state:'visible'});assert.match(await tooltip.textContent(),/Berg, Härjedalen/);
+  assert.equal(await tooltip.evaluate(e=>getComputedStyle(e).pointerEvents),'auto');
+  await tooltip.hover();await page.waitForTimeout(500);assert.equal(await tooltip.isVisible(),true,'Pointer can remain over the tooltip');
+  await page.keyboard.press('Escape');await tooltip.waitFor({state:'hidden'});assert.equal(page.url(),url);
+  await page.mouse.move(0,0);await polygon.focus();await tooltip.waitFor({state:'visible'});
+  await page.keyboard.press('Escape');await tooltip.waitFor({state:'hidden'});assert.equal(await polygon.evaluate(e=>e===document.activeElement),true,'Escape preserves focus');
+  await page.locator('#municipality-search').focus();await polygon.focus();await tooltip.waitFor({state:'visible'});
+  await page.locator('#municipality-search').focus();await tooltip.waitFor({state:'hidden'});
+ });
+ await check('15 Barbro – ökat textavstånd och omflöde vid 320 px, på båda språken',async()=>{
+  for(const lang of ['sv','nb']){
+   await page.setViewportSize({width:320,height:740});await ready('?lang='+lang);
+   await page.addStyleTag({content:'*{line-height:1.5!important;letter-spacing:.12em!important;word-spacing:.16em!important}p{margin-bottom:2em!important}'});
+   for(const category of data.categories){await page.locator('#category').selectOption(category.id);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,lang+' '+category.id);}
+   for(const button of await page.locator('.study-switch button').all()){const r=await button.boundingBox();assert.ok(r.x>=0&&r.x+r.width<=320);assert.equal(await button.evaluate(e=>e.scrollHeight<=e.clientHeight+1),true);}
+   await page.locator('#municipality-picker').click();await page.locator('#municipality-filter').fill('Trondheim');await page.locator('#choose-NO-5001').check();await page.locator('#close-municipalities').click();
+   assert.equal(await page.locator('#comparison-bars [data-municipality="NO-5001"]').count(),1);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+   await page.screenshot({path:path.join(out,'text-spacing-'+lang+'-320.png'),fullPage:true});
+   await page.locator('[data-study="cohort"]').click();assert.equal(await page.locator('.study-context').isVisible(),false);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+   await page.goto(base+'method.html');await page.addStyleTag({content:'*{line-height:1.5!important;letter-spacing:.12em!important;word-spacing:.16em!important}p{margin-bottom:2em!important}'});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'method text spacing');
+  }
+  await page.setViewportSize({width:1366,height:768});
+ });
+ await check('16 Robusthet – inga JavaScript-undantag i användarflödena',async()=>assert.deepEqual(errors,[]));
  }finally{fs.writeFileSync(path.join(out,'e2e-results.json'),JSON.stringify({base,checks:records,failures},null,2));await browser?.close();server?.close();}if(failures)process.exitCode=1;}
 main().catch(e=>{console.error(e);process.exitCode=1;server?.close();});
