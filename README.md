@@ -10,9 +10,9 @@ Detta är en arbetsversion för forskargranskning. Norska resultat och vissa met
 
 [Metod och hela dokumentationen](https://raal1600.github.io/miun-gis-mvp/method.html)
 
-UI behåller den ursprungliga navigationen, yrkesprofilen och båda jämförelsekolumnerna. Endast forskarnas bildkommentarer ändrar gränssnittet. Extra tolknings- och granskningsblock har tagits bort; datauppdateringen är oförändrad. E2E 10 kontrollerar denna avgränsning.
+UI behåller den ursprungliga navigationen, yrkesprofilen och båda jämförelsekolumnerna. Gränssnittet följer forskarnas bildkommentarer, med kommunjämförelsen förenklad enligt Ramis önskemål. Extra tolknings- och granskningsblock har tagits bort; datauppdateringen är oförändrad. E2E 10 kontrollerar denna avgränsning.
 
-Kommunjämförelsen förenklades på Ramis önskemål den 11 oktober: välj **Kommun 1** och **Kommun 2** bredvid varandra. Det krävs inget kartklick innan jämförelsen. E2E 11 kontrollerar att valen, kartan, tabellen och delningslänken följs åt.
+Kommunjämförelsen förenklades på Ramis önskemål den 11 oktober: öppna **Jämför kommuner**, sök och kryssa i de kommuner som ska jämföras. Flera kommuner visas samtidigt med separata värden i jämförelsen och yrkesprofilen. Kartan, sökningen och tabellen kan också lägga till kommuner. Avmarkera en kommun eller välj **Rensa val** i väljaren. Valen bevaras när ämne, kön eller område ändras och ingår i delningslänken. Äldre länkar fungerar fortfarande. E2E 11–12 kontrollerar flerval, värden, delning, tangentbord och mobil.
 
 ## Publicering och tester
 Workflow **Publicera GIS – kravtester och verifierad liveversion** innehåller:
@@ -25,6 +25,6 @@ Skärmbilder och rapporter finns som Actions-artefakter. Automatisk tillgänglig
 16 runtimefiler publiceras. Testverktygen under `.github/` kopieras aldrig till webbservern. Originalarbetsbok och intern testfixtur finns inte i detta repo. `release.json` beskriver exakt version och filhashar.
 
 ## Hosting
-Statisk HTTPS-hosting på Linux eller Windows. Ingen databas, GIS-server, Node-server eller CMS behövs i drift. Hela webbpaketet är cirka 0,83 MB okomprimerat. Kartdata och Leaflet levereras lokalt.
+Statisk HTTPS-hosting på Linux eller Windows. Ingen databas, GIS-server, Node-server eller CMS behövs i drift. Hela webbpaketet är cirka 0,84 MB okomprimerat. Kartdata och Leaflet levereras lokalt.
 
 Geografi: SCB CC0; Kartverket CC BY 4.0. Leaflet BSD-2-Clause, licens under `vendor/`. Ingen individdata, extern baskarta eller spårningskod. Offentligt visade aggregerade data går tekniskt att läsa även utan nedladdningsknapp.
