@@ -12,6 +12,8 @@ Detta är en arbetsversion för forskargranskning. Norska resultat och vissa met
 
 UI behåller den ursprungliga navigationen, yrkesprofilen och båda jämförelsekolumnerna. Endast forskarnas bildkommentarer ändrar gränssnittet. Extra tolknings- och granskningsblock har tagits bort; datauppdateringen är oförändrad. E2E 10 kontrollerar denna avgränsning.
 
+Kommunjämförelsen förenklades på Ramis önskemål den 11 oktober: välj **Kommun 1** och **Kommun 2** bredvid varandra. Det krävs inget kartklick innan jämförelsen. E2E 11 kontrollerar att valen, kartan, tabellen och delningslänken följs åt.
+
 ## Publicering och tester
 Workflow **Publicera GIS – kravtester och verifierad liveversion** innehåller:
 1. **01 · Kravtester före publicering** – alla 162 mått och kommunvärden i webbläsaren, grupper, skalor, tangentbord, laptop/mobil, EU-logotyp samt axe WCAG A/AA.
