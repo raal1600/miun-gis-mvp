@@ -7,6 +7,12 @@ const colors=['#eff3dc','#c8deb3','#90bb93','#4e876b','#164f47'];
 async function check(name,fn){try{await fn();records.push({name,status:'passed'});console.log('PASS '+name);}catch(e){failures++;records.push({name,status:'failed',error:e.stack});console.error('FAIL '+name+'\n'+e.stack);await page?.screenshot({path:path.join(out,'failure-'+failures+'.png'),fullPage:true}).catch(()=>{});}}
 async function ready(query=''){await page.goto(base+query);await page.waitForSelector('#application:not([hidden])');if(!query.includes('study=cohort'))await page.waitForSelector('path[data-municipality]');}
 async function chooseMunicipalities(ids){if(await page.locator('#municipality-picker').getAttribute('aria-expanded')!=='true')await page.locator('#municipality-picker').click();await page.locator('#municipality-filter').fill('');if(await page.locator('#clear-municipalities').isEnabled())await page.locator('#clear-municipalities').click();for(const id of ids)await page.locator('#choose-'+id).check();await page.locator('#close-municipalities').click();}
+async function clickMunicipality(id){
+ const polygon=page.locator('path[data-municipality="'+id+'"]');await polygon.scrollIntoViewIfNeeded();
+ // Click an actual visible point inside the polygon, not its possibly exterior bounding-box centre.
+ const point=await polygon.evaluate(p=>{const r=p.getBoundingClientRect();for(let y=Math.max(0,r.top)+1;y<Math.min(innerHeight,r.bottom);y+=2)for(let x=Math.max(0,r.left)+1;x<Math.min(innerWidth,r.right);x+=2)if(document.elementFromPoint(x,y)===p)return{x,y};});
+ assert.ok(point,'Visible clickable polygon: '+id);await page.mouse.click(point.x,point.y);
+}
 async function axe(name){const result=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze();fs.writeFileSync(path.join(out,'axe-'+name+'.json'),JSON.stringify(result,null,2));assert.deepEqual(result.violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>n.target)})),[],name);}
 const norm=s=>s.replace(/[\u00a0\u202f]/g,' ');
 const value=(n,v,lang='sv')=>n===null?'—':norm(new Intl.NumberFormat(lang,{minimumFractionDigits:v.unit==='percent'?1:2,maximumFractionDigits:v.unit==='percent'?1:2}).format(n*(v.unit==='percent'?100:1)))+(v.unit==='percent'?' %':'');
@@ -45,7 +51,7 @@ async function main(){try{
  await check('04 Barbro – tangentbord, kommunsökning, fokus, sortering och landfilter',async()=>{
   await ready();await page.keyboard.press('Tab');assert.equal(await page.locator(':focus').getAttribute('class'),'skip');await page.keyboard.press('Enter');assert.equal(await page.locator(':focus').getAttribute('id'),'results');
   await page.locator('#municipality-search').focus();await page.keyboard.type('Berg');await page.keyboard.press('ArrowDown');assert.equal(await page.locator('#municipality-search').getAttribute('aria-activedescendant'),'option-0');await page.keyboard.press('Enter');assert.equal(await page.locator('#selected-name').textContent(),'Berg');assert.equal(await page.locator(':focus').getAttribute('id'),'results');
-  await page.locator('path[data-municipality="SE-2380"]').focus();await page.keyboard.press('Enter');assert.equal(await page.locator('#selected-name').textContent(),'Östersund');
+  await page.locator('path[data-municipality="SE-2380"]').focus();await page.keyboard.press('Enter');assert.equal(await page.locator('#choose-SE-2380').isChecked(),false);assert.equal(await page.locator('#selected-name').textContent(),'Berg');
   await page.locator('#country').selectOption('SE');assert.equal(await page.locator('#table-body tr').count(),15);assert.equal(await page.locator('path[data-municipality]').count(),15);await page.locator('#table-search').fill('Berg');assert.equal(await page.locator('#table-body tr').count(),1);await page.locator('#table-search').fill('');await page.locator('[data-sort="value"]').click();assert.equal(await page.locator('#th-value').getAttribute('aria-sort'),'ascending');
   await page.locator('#reset').click();assert.equal(await page.locator('#table-body tr').count(),53);await page.locator('#municipality-search').fill('xyz123');assert.match(await page.locator('#search-options').textContent(),/Inga kommuner/);await page.keyboard.press('Escape');assert.equal(await page.locator('#search-options').isVisible(),false);
  });
@@ -113,6 +119,32 @@ async function main(){try{
   await page.setViewportSize({width:1366,height:768});
   await ready('?municipalities='+data.municipalities.map(m=>m.id).join(','));assert.equal(await page.locator('#comparison-bars [data-municipality]').count(),53);await page.locator('#municipality-picker').click();assert.equal(await page.locator('#municipality-checkboxes input:checked').count(),53);await page.locator('#clear-municipalities').click();await page.locator('#choose-SE-2380').check();await page.locator('#choose-SE-2380').uncheck();assert.equal(await page.locator('#comparison-bars [data-municipality]').count(),0);await page.locator('#close-municipalities').click();
  });
- await check('13 Robusthet – inga JavaScript-undantag i användarflödena',async()=>assert.deepEqual(errors,[]));
+ await check('13 Rami – kartklick väljer och avmarkerar samma kommun, även med tangentbord och på mobil',async()=>{
+  await ready();
+  const assertSelection=async ids=>{
+   assert.equal(new URL(page.url()).searchParams.get('municipalities'),ids.join(','));
+   assert.deepEqual(await page.locator('#comparison-bars [data-municipality]').evaluateAll(rows=>rows.map(r=>r.dataset.municipality)),ids);
+   assert.deepEqual(await page.locator('#municipality-checkboxes input:checked').evaluateAll(inputs=>inputs.map(i=>i.value).sort()),[...ids].sort());
+   assert.deepEqual(await page.locator('path[data-municipality][aria-pressed="true"]').evaluateAll(paths=>paths.map(p=>p.dataset.municipality).sort()),[...ids].sort());
+   assert.equal(await page.locator('.profile-reading').count(),ids.length*18);
+  };
+  await clickMunicipality('SE-2380');await assertSelection([]);assert.equal(await page.locator('#selected-name').textContent(),'Ingen kommun vald');
+  await clickMunicipality('SE-2380');await assertSelection(['SE-2380']);
+  await clickMunicipality('SE-2326');await assertSelection(['SE-2380','SE-2326']);
+  await clickMunicipality('SE-2380');await assertSelection(['SE-2326']);assert.equal(await page.locator('#selected-name').textContent(),'Berg');
+  await clickMunicipality('SE-2326');await assertSelection([]);
+  await chooseMunicipalities(['SE-2380','SE-2326']);await clickMunicipality('SE-2326');await assertSelection(['SE-2380']);assert.equal(await page.locator('#selected-name').textContent(),'Östersund');
+  const mapBerg=page.locator('path[data-municipality="SE-2326"]');
+  await mapBerg.focus();await page.keyboard.press('Enter');await assertSelection(['SE-2380','SE-2326']);
+  await mapBerg.focus();await page.keyboard.press('Space');await assertSelection(['SE-2380']);
+  await page.reload();await page.waitForSelector('path[data-municipality]');await assertSelection(['SE-2380']);
+  await page.setViewportSize({width:390,height:844});
+  await clickMunicipality('SE-2326');await assertSelection(['SE-2380','SE-2326']);
+  await clickMunicipality('SE-2326');await assertSelection(['SE-2380']);
+  await clickMunicipality('SE-2380');await assertSelection([]);
+  await page.reload();await page.waitForSelector('path[data-municipality]');await assertSelection([]);
+  await page.setViewportSize({width:1366,height:768});
+ });
+ await check('14 Robusthet – inga JavaScript-undantag i användarflödena',async()=>assert.deepEqual(errors,[]));
  }finally{fs.writeFileSync(path.join(out,'e2e-results.json'),JSON.stringify({base,checks:records,failures},null,2));await browser?.close();server?.close();}if(failures)process.exitCode=1;}
 main().catch(e=>{console.error(e);process.exitCode=1;server?.close();});

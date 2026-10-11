@@ -12,7 +12,7 @@ Detta är en arbetsversion för forskargranskning. Norska resultat och vissa met
 
 UI behåller den ursprungliga navigationen, yrkesprofilen och båda jämförelsekolumnerna. Gränssnittet följer forskarnas bildkommentarer, med kommunjämförelsen förenklad enligt Ramis önskemål. Extra tolknings- och granskningsblock har tagits bort; datauppdateringen är oförändrad. E2E 10 kontrollerar denna avgränsning.
 
-Kommunjämförelsen förenklades på Ramis önskemål den 11 oktober: öppna **Jämför kommuner**, sök och kryssa i de kommuner som ska jämföras. Flera kommuner visas samtidigt med separata värden i jämförelsen och yrkesprofilen. Kartan, sökningen och tabellen kan också lägga till kommuner. Avmarkera en kommun eller välj **Rensa val** i väljaren. Valen bevaras när ämne, kön eller område ändras och ingår i delningslänken. Äldre länkar fungerar fortfarande. E2E 11–12 kontrollerar flerval, värden, delning, tangentbord och mobil.
+Kommunjämförelsen förenklades på Ramis önskemål den 11 oktober: öppna **Jämför kommuner**, sök och kryssa i de kommuner som ska jämföras. Flera kommuner visas samtidigt med separata värden i jämförelsen och yrkesprofilen. Ett kartklick väljer kommunen; nästa klick på samma kommun avmarkerar den. Enter och mellanslag fungerar likadant. Sökningen och tabellen kan också lägga till kommuner. Avmarkera en kommun eller välj **Rensa val** i väljaren. Valen bevaras när ämne, kön eller område ändras och ingår i delningslänken. Äldre länkar fungerar fortfarande. E2E 11–13 kontrollerar flerval, värden, delning, val/avval med kartklick, tangentbord och mobil.
 
 ## Publicering och tester
 Workflow **Publicera GIS – kravtester och verifierad liveversion** innehåller:
