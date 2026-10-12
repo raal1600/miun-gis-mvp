@@ -35,9 +35,9 @@ async function main(){try{
  });
  const data=await (await context.request.get(base+'data/survey.json')).json();
  await check('02 Ingrid – karta och samtliga 162 mått visar rätt kommunvärden',async()=>{
-  await ready();assert.equal(await page.locator('#category option').count(),5);assert.equal(await page.locator('path[data-municipality]').count(),53);assert.equal(await page.locator('#primary-value').textContent(),'3,18');
+  await ready();assert.equal(await page.locator('#category option').count(),6);assert.equal(await page.locator('path[data-municipality]').count(),53);assert.equal(await page.locator('#primary-value').textContent(),'3,18');
   for(const v of data.variables){
-   for(const [key,val] of [['category',v.category],['topic',v.topic],['measure',v.measure],['sex',v.sex]])if(await page.locator('#'+key).inputValue()!==val)await page.locator('#'+key).selectOption(val);
+   for(const [key,val] of [['category',v.category==='business'&&v.measure!=='interest'?'business-image':v.category],['topic',v.topic],['measure',v.measure],['sex',v.sex]])if(await page.locator('#'+key).inputValue()!==val)await page.locator('#'+key).selectOption(val);
    assert.equal(new URL(page.url()).searchParams.get('variable'),v.id);
    const actual=await page.locator('#table-body tr').evaluateAll(rows=>Object.fromEntries(rows.map(r=>[r.dataset.municipality,[r.cells[2].textContent,r.cells[5].textContent,r.cells[4].textContent]])));
    const fills=await page.locator('path[data-municipality]').evaluateAll(paths=>Object.fromEntries(paths.map(p=>[p.dataset.municipality,p.getAttribute('fill')])));
@@ -174,6 +174,30 @@ async function main(){try{
    await page.goto(base+'method.html');await page.addStyleTag({content:'*{line-height:1.5!important;letter-spacing:.12em!important;word-spacing:.16em!important}p{margin-bottom:2em!important}'});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'method text spacing');
   }
   await page.setViewportSize({width:1366,height:768});
+ });
+ await check('17 Ingrid – intresse och bilden av företagande är separata val',async()=>{
+  await ready();await page.locator('#category').selectOption({label:'Intresse att driva företag'});
+  assert.deepEqual(await page.locator('#measure option').allTextContents(),['Intresse']);
+  await page.locator('#category').selectOption({label:'Bilden av företagande'});
+  assert.deepEqual(await page.locator('#measure option').allTextContents(),['Agens','Välvilja','Ledarskap']);
+  for(const measure of ['agency','communality','leadership']){
+   await page.locator('#measure').selectOption(measure);
+   assert.notEqual(await page.locator('#primary-value').textContent(),'—');
+   const url=page.url();await page.reload();await page.waitForSelector('#application:not([hidden])');
+   assert.equal(page.url(),url);assert.equal(await page.locator('#category').inputValue(),'business-image');assert.equal(await page.locator('#measure').inputValue(),measure);
+  }
+  await page.locator('#category').selectOption('business');assert.equal(await page.locator('#measure').inputValue(),'interest');
+ });
+ await check('18 Ingrid – skattningsstaplar 1–5 och procentstaplar 0–100',async()=>{
+  for(const id of ['interest-e','business-v','housing-s']){
+   await ready('?variable='+id+'&municipality=SE-2380');const v=data.variables.find(v=>v.id===id),i=data.variables.indexOf(v),m=data.municipalities.find(m=>m.id==='SE-2380');
+   assert.equal(await page.locator('#comparison-scale').textContent(),v.unit==='percent'?'0–100 %':'1–5');
+   const fills=await page.locator('#comparison-bars .bar-fill').evaluateAll(es=>es.map(e=>parseFloat(e.style.width)));
+   const values=[m.values[i],data.benchmarks.SE.values[i],data.benchmarks.NO.values[i],data.benchmarks.ALL.values[i]];
+   values.forEach((n,j)=>assert.ok(Math.abs(fills[j]-(v.unit==='percent'?n*100:(n-1)*25))<.001,id+' bar '+j));
+   assert.equal(norm(await page.locator('#primary-value').textContent()),value(m.values[i],v));
+  }
+  await ready('?variable=housing-s&municipality=NO-5036');assert.equal(await page.locator('#value-note').getAttribute('data-status'),'review');
  });
  await check('16 Robusthet – inga JavaScript-undantag i användarflödena',async()=>assert.deepEqual(errors,[]));
  }finally{fs.writeFileSync(path.join(out,'e2e-results.json'),JSON.stringify({base,checks:records,failures},null,2));await browser?.close();server?.close();}if(failures)process.exitCode=1;}
