@@ -197,7 +197,22 @@ async function main(){try{
    values.forEach((n,j)=>assert.ok(Math.abs(fills[j]-(v.unit==='percent'?n*100:(n-1)*25))<.001,id+' bar '+j));
    assert.equal(norm(await page.locator('#primary-value').textContent()),value(m.values[i],v));
   }
-  await ready('?variable=housing-s&municipality=NO-5036');assert.equal(await page.locator('#value-note').getAttribute('data-status'),'review');
+  await ready('?variable=housing-s&municipality=NO-5036');assert.equal(await page.locator('#value-note').getAttribute('data-status'),'grouped');
+ });
+ await check('19 Ingrid – godkända boendevärden för Frosta/Stjørdal i karta, tabell och jämförelse',async()=>{
+  for(const [vid,display,fill] of [['housing-s','29,4 %','#c8deb3'],['housing-t','70,6 %','#4e876b']]){
+   for(const id of ['NO-5036','NO-5035']){
+    await ready('?variable='+vid+'&municipality='+id);
+    assert.equal(norm(await page.locator('#primary-value').textContent()),display);
+    assert.equal(await page.locator('#value-note').getAttribute('data-status'),'grouped');
+    assert.match(await page.locator('#group-note').textContent(),/Frosta, Stjørdal/);
+    assert.match(await page.locator('#source-cell').textContent(),/Ingrid Zakrisson, 2026-10-13/);
+    assert.equal(await page.locator('path[data-municipality="'+id+'"]').getAttribute('fill'),fill);
+    assert.equal(norm(await page.locator('#table-body tr[data-municipality="'+id+'"] td').nth(2).textContent()),display);
+   }
+   await chooseMunicipalities(['NO-5036','NO-5035']);assert.match(await page.locator('#comparison-bars').textContent(),/Samma kommungrupp/);
+   for(const id of ['NO-5036','NO-5035'])assert.equal(norm(await page.locator('#comparison-bars [data-municipality="'+id+'"] .bar-number').textContent()),display);
+  }
  });
  await check('16 Robusthet – inga JavaScript-undantag i användarflödena',async()=>assert.deepEqual(errors,[]));
  }finally{fs.writeFileSync(path.join(out,'e2e-results.json'),JSON.stringify({base,checks:records,failures},null,2));await browser?.close();server?.close();}if(failures)process.exitCode=1;}
