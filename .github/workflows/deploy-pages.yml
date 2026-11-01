@@ -13,7 +13,7 @@ concurrency:
 jobs:
   requirements:
     name: 01 · Kravtester före publicering
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     outputs:
       release: ${{ steps.release.outputs.id }}
@@ -53,7 +53,7 @@ jobs:
   deploy:
     name: 02 · Publicera verifierad visualisering
     needs: requirements
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       url: ${{ steps.deployment.outputs.page_url }}
     environment:
@@ -65,7 +65,7 @@ jobs:
   live:
     name: 03 · E2E på publicerad version
     needs: [requirements, deploy]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
