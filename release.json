@@ -1,5 +1,5 @@
 {
-  "release": "7bf4a77429f8d26b3b7e2add48a2fb308a1e093f53abbda167c61c0ac4215461",
+  "release": "348c990d9f83bad13ef53202400263f1aed78c8ade5821e887ce3f13dca916b5",
   "sourceWorkbookSha256": "b1b000ec2b1770ef29157005fb321d331617de540c086753b96e444f8043c5b3",
   "files": {
     ".nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -13,7 +13,7 @@
     "favicon.svg": "be51c8e743afd48bd28b3aa5c3847b6b0881ac8cb26f5eaf2a422e8884ae3d4b",
     "index.html": "231ca2e3462a73f657d24668e5cab847ec1b9d0c9d78b2aa6aa3b88c283a6e80",
     "method.html": "7a885326e7314d91505be260f9ca9afef557f89995fdb276c61a3ce402347c74",
-    "style.css": "6c2a93f390bdfaa58e033ac9cdef0837eaf7f1ae5dd62d571f515bb268fa5eb1",
+    "style.css": "2403275cc63e7b3e2c3b73e1bd397d7f606f34c4124255c1a76c15a9b7491e18",
     "vendor/Leaflet-LICENSE": "53e8dc25862014e4324741ca18fbe3611e11d42ef69f59f86ea8c5389647d4cb",
     "vendor/leaflet.css": "a7837102824184820dfa198d1ebcd109ff6d0ff9a2672a074b9a1b4d147d04c6",
     "vendor/leaflet.js": "dc71f8a6880bc3ca1bd9fa8dc5f1af48c702dc510b0a78240a07c5feed7ce935"
