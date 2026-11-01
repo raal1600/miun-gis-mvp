@@ -2,7 +2,7 @@
 
 [Öppna visualiseringen](https://raal1600.github.io/miun-gis-mvp/)
 
-Här finns det byggda webbpaketet. Utveckling och fullständiga datatester finns i `raal1600/miun-gis-architecture-demo`, grenen `feature/gis-mvp-demo`, under `mvp/`.
+Här finns det byggda webbpaketet. Utveckling och fullständiga datatester finns i det privata repot `raal1600/miun-gis-source`.
 
 Forskargruppens enkät: fem ämnesområden, 162 mått och kommungrupper per variabel. Alla 18 yrken, könsuppdelning för egna mål/förmågor och boende, svenska/norska, tangentbord och texttabell. 51 kommuner finns i källfilen; Røyrvik och Leka visas som utan deltagare.
 
