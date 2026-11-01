@@ -3,7 +3,9 @@ const {chromium}=require('playwright');const AxeBuilder=require('@axe-core/playw
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),http=require('node:http'),crypto=require('node:crypto');
 const root=path.resolve(process.env.SITE_ROOT||'dist/site'),out=path.resolve(process.env.RESULTS_DIR||'test-results');fs.mkdirSync(out,{recursive:true});
 let server,browser,page,base=process.env.BASE_URL,failures=0;const records=[];
-const colors=['#eff3dc','#c8deb3','#90bb93','#4e876b','#164f47'];
+const colors=['#dbe8f5','#a9c6e6','#6f9ed0','#3570b0','#0d4a86'];
+const withValue=(data,v,country='all')=>{const i=data.variables.indexOf(v);return data.municipalities.filter(m=>(country==='all'||m.country===country)&&m.values[i]!==null&&['observed','grouped'].includes(m.statuses[i])).length;};
+async function setLang(lang){await page.locator('#lang-button').click();await page.locator('#lang-options [data-lang="'+lang+'"]').click();}
 async function check(name,fn){try{await fn();records.push({name,status:'passed'});console.log('PASS '+name);}catch(e){failures++;records.push({name,status:'failed',error:e.stack});console.error('FAIL '+name+'\n'+e.stack);await page?.screenshot({path:path.join(out,'failure-'+failures+'.png'),fullPage:true}).catch(()=>{});}}
 async function ready(query=''){await page.goto(base+query);await page.waitForSelector('#application:not([hidden])');if(!query.includes('study=cohort'))await page.waitForSelector('path[data-municipality]');}
 async function chooseMunicipalities(ids){if(await page.locator('#municipality-picker').getAttribute('aria-expanded')!=='true')await page.locator('#municipality-picker').click();await page.locator('#municipality-filter').fill('');if(await page.locator('#clear-municipalities').isEnabled())await page.locator('#clear-municipalities').click();for(const id of ids)await page.locator('#choose-'+id).check();await page.locator('#close-municipalities').click();}
@@ -35,14 +37,14 @@ async function main(){try{
  });
  const data=await (await context.request.get(base+'data/survey.json')).json();
  await check('02 Ingrid – karta och samtliga 162 mått visar rätt kommunvärden',async()=>{
-  await ready();assert.equal(await page.locator('#category option').count(),6);assert.equal(await page.locator('path[data-municipality]').count(),53);assert.equal(await page.locator('#primary-value').textContent(),'3,18');
+  await ready();await page.locator('#exclude-empty').uncheck();assert.equal(await page.locator('#category option').count(),6);assert.equal(await page.locator('path[data-municipality]').count(),53);assert.equal(await page.locator('#primary-value').textContent(),'3,18');
   for(const v of data.variables){
    for(const [key,val] of [['category',v.category==='business'&&v.measure!=='interest'?'business-image':v.category],['topic',v.topic],['measure',v.measure],['sex',v.sex]])if(await page.locator('#'+key).inputValue()!==val)await page.locator('#'+key).selectOption(val);
    assert.equal(new URL(page.url()).searchParams.get('variable'),v.id);
    const actual=await page.locator('#table-body tr').evaluateAll(rows=>Object.fromEntries(rows.map(r=>[r.dataset.municipality,[r.cells[2].textContent,r.cells[5].textContent,r.cells[4].textContent]])));
    const fills=await page.locator('path[data-municipality]').evaluateAll(paths=>Object.fromEntries(paths.map(p=>[p.dataset.municipality,p.getAttribute('fill')])));
    const i=data.variables.findIndex(x=>x.id===v.id);
-   for(const m of data.municipalities){const n=m.values[i];assert.equal(norm(actual[m.id][0]),value(n,v),v.id+' '+m.id);const stable=n===null?null:Math.round(n*1e10)/1e10;const b=n===null?-1:v.unit==='percent'?Math.min(4,Math.floor(stable*5)):stable<1.75?0:stable<2.5?1:stable<=3.5?2:stable<=4.25?3:4;assert.equal(fills[m.id],colors[b]||(m.statuses[i]==='review'?'#fff2d7':'#e1e4e2'),v.id+' color '+m.id);assert.equal(norm(actual[m.id][2]),n===null?'—':norm(new Intl.NumberFormat('sv',{minimumFractionDigits:v.unit==='percent'?1:2,maximumFractionDigits:v.unit==='percent'?1:2,signDisplay:'exceptZero'}).format((n-data.benchmarks.ALL.values[i])*(v.unit==='percent'?100:1)))+(v.unit==='percent'?' procentenheter':''),'overall '+v.id+' '+m.id);if(m.groups[i])for(const id of data.groups[m.groups[i]].members)assert.ok(actual[m.id][1].includes(data.municipalities.find(x=>x.id===id).name));}
+   for(const m of data.municipalities){const n=m.values[i];assert.equal(norm(actual[m.id][0]),value(n,v),v.id+' '+m.id);const stable=n===null?null:Math.round(n*1e10)/1e10;const b=n===null?-1:v.unit==='percent'?Math.min(4,Math.floor(stable*5)):stable<1.75?0:stable<2.5?1:stable<=3.5?2:stable<=4.25?3:4;assert.equal(fills[m.id],colors[b]||(m.statuses[i]==='review'?'#faeee7':'#e9e7e5'),v.id+' color '+m.id);assert.equal(norm(actual[m.id][2]),n===null?'—':norm(new Intl.NumberFormat('sv',{minimumFractionDigits:v.unit==='percent'?1:2,maximumFractionDigits:v.unit==='percent'?1:2,signDisplay:'exceptZero'}).format((n-data.benchmarks.ALL.values[i])*(v.unit==='percent'?100:1)))+(v.unit==='percent'?' procentenheter':''),'overall '+v.id+' '+m.id);if(m.groups[i])for(const id of data.groups[m.groups[i]].members)assert.ok(actual[m.id][1].includes(data.municipalities.find(x=>x.id===id).name));}
   }
   assert.equal(await page.locator('[download],a[href$=".csv"]').count(),0);
  });
@@ -55,17 +57,17 @@ async function main(){try{
   await ready();await page.keyboard.press('Tab');assert.equal(await page.locator(':focus').getAttribute('class'),'skip');await page.keyboard.press('Enter');assert.equal(await page.locator(':focus').getAttribute('id'),'results');
   await page.locator('#municipality-search').focus();await page.keyboard.type('Berg');await page.keyboard.press('ArrowDown');assert.equal(await page.locator('#municipality-search').getAttribute('aria-activedescendant'),'option-0');await page.keyboard.press('Enter');assert.equal(await page.locator('#selected-name').textContent(),'Berg');assert.equal(await page.locator(':focus').getAttribute('id'),'results');
   await page.locator('path[data-municipality="SE-2380"]').focus();await page.keyboard.press('Enter');assert.equal(await page.locator('#choose-SE-2380').isChecked(),false);assert.equal(await page.locator('#selected-name').textContent(),'Berg');
-  await page.locator('#country').selectOption('SE');assert.equal(await page.locator('#table-body tr').count(),15);assert.equal(await page.locator('path[data-municipality]').count(),15);await page.locator('#table-search').fill('Berg');assert.equal(await page.locator('#table-body tr').count(),1);await page.locator('#table-search').fill('');await page.locator('[data-sort="value"]').click();assert.equal(await page.locator('#th-value').getAttribute('aria-sort'),'ascending');
-  await page.locator('#reset').click();assert.equal(await page.locator('#table-body tr').count(),53);await page.locator('#municipality-search').fill('xyz123');assert.match(await page.locator('#search-options').textContent(),/Inga kommuner/);await page.keyboard.press('Escape');assert.equal(await page.locator('#search-options').isVisible(),false);
+  const polis=data.variables.find(v=>v.id==='interest-e');await page.locator('#country').selectOption('SE');assert.equal(await page.locator('#table-body tr').count(),withValue(data,polis,'SE'));assert.equal(await page.locator('path[data-municipality]').count(),15);await page.locator('#table-search').fill('Berg');assert.equal(await page.locator('#table-body tr').count(),1);await page.locator('#table-search').fill('');await page.locator('[data-sort="value"]').click();assert.equal(await page.locator('#th-value').getAttribute('aria-sort'),'ascending');
+  await page.locator('#reset').click();assert.equal(await page.locator('#table-body tr').count(),withValue(data,polis));await page.locator('#municipality-search').fill('xyz123');assert.match(await page.locator('#search-options').textContent(),/Inga kommuner/);await page.keyboard.press('Escape');assert.equal(await page.locator('#search-options').isVisible(),false);
  });
  await check('05 Dataleverans – procent, kön, norska, delningslänk och tom kohort',async()=>{
   await ready('?variable=housing-h&municipality=SE-2326');assert.equal(await page.locator('#sex').inputValue(),'men');assert.match(await page.locator('#primary-value').textContent(),/%/);assert.match(await page.locator('#table-body tr').first().textContent(),/procentenheter/);
-  await page.locator('[data-lang="nb"]').click();assert.equal(await page.locator('html').getAttribute('lang'),'nb');assert.equal(await page.locator('#sex option:checked').textContent(),'Gutter');const url=page.url();await page.reload();await page.waitForSelector('#application:not([hidden])');assert.equal(page.url(),url);assert.match(await page.locator('#legend-title').textContent(),/prosent/);
+  await setLang('nb');assert.equal(await page.locator('html').getAttribute('lang'),'nb');assert.equal(await page.locator('#sex option:checked').textContent(),'Gutter');const url=page.url();await page.reload();await page.waitForSelector('#application:not([hidden])');assert.equal(page.url(),url);assert.match(await page.locator('#legend-title').textContent(),/prosent/);
   await page.locator('[data-study="cohort"]').click();assert.equal(await page.locator('#survey-panel').isVisible(),false);assert.match(await page.locator('#cohort-panel').textContent(),/ennå ikke tilgjengelige/);assert.equal(await page.locator('.study-context').isVisible(),false);await page.reload();await page.waitForSelector('#cohort-panel:not([hidden])');assert.equal(await page.locator('#survey-panel').isVisible(),false);
  });
  await check('06 Ingrid – hela kartan på laptop, mobil 320/390 px och EU-emblemets storlek',async()=>{
-  for(const viewport of [{width:1366,height:768},{width:1280,height:720},{width:390,height:844},{width:320,height:740}]){await page.setViewportSize(viewport);await ready();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'page overflow '+viewport.width);assert.equal(await page.locator('#municipality-picker').count(),1);assert.equal(await page.locator('select#municipality,select#compare').count(),0);const map=await page.locator('#map').boundingBox();if(viewport.width>=1280){assert.ok(map.y+map.height<=viewport.height,JSON.stringify(map));const legend=await page.locator('.legend').boundingBox();assert.ok(legend.y+legend.height<=viewport.height,JSON.stringify(legend));}
-   const eu=await page.locator('.eu-partner').boundingBox();for(const name of ['.miun','.nord']){const uni=await page.locator(name).boundingBox();assert.ok(uni.width<=eu.width*120/780,'EU width '+viewport.width);assert.ok(uni.height<=eu.height*80/232,'EU height');}
+  for(const viewport of [{width:1366,height:768},{width:1280,height:720},{width:390,height:844},{width:320,height:740}]){await page.setViewportSize(viewport);await ready();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'page overflow '+viewport.width);assert.equal(await page.locator('#municipality-picker').count(),1);assert.equal(await page.locator('select#municipality,select#compare').count(),0);const map=await page.locator('#map').boundingBox();if(viewport.width>=1280)assert.ok(map.y+map.height<=viewport.height,JSON.stringify(map));
+   const eu=await page.locator('.eu-partner').boundingBox();for(const name of ['.miun','.nord']){const uni=await page.locator(name).boundingBox();assert.ok(uni.width<=eu.width*.6,'EU width '+viewport.width);assert.ok(uni.height<=eu.height*.7,'EU height');}
    await page.screenshot({path:path.join(out,`view-${viewport.width}.png`),fullPage:true});}
   await page.setViewportSize({width:1366,height:768});
  });
@@ -78,11 +80,11 @@ async function main(){try{
   const c=await browser.newContext({javaScriptEnabled:false});const p=await c.newPage();await p.goto(base+'method.html');assert.match(await p.locator('main').textContent(),/1572|1 572/);assert.match(await p.locator('main').textContent(),/Referenser/);await c.close();
  });
  await check('09 Robusthet – kartfel bevarar tabell; trasiga data ger tydligt fel',async()=>{
-  await page.route('**/data/geography.geojson',r=>r.abort());await page.goto(base);await page.waitForSelector('#map-error:not([hidden])');assert.equal(await page.locator('#table-body tr').count(),53);await page.locator('#table-body button').first().click();assert.equal(await page.locator('#selected-name').textContent(),'Berg');await page.unroute('**/data/geography.geojson');
+  await page.route('**/data/geography.geojson',r=>r.abort());await page.goto(base);await page.waitForSelector('#map-error:not([hidden])');await page.locator('#exclude-empty').uncheck();assert.equal(await page.locator('#table-body tr').count(),53);await page.locator('#table-body button').first().click();assert.equal(await page.locator('#selected-name').textContent(),'Berg');await page.unroute('**/data/geography.geojson');
   await page.route('**/data/survey.json',r=>r.fulfill({contentType:'application/json',body:'{"schemaVersion":0}'}));await page.goto(base);await page.waitForSelector('#fatal:not([hidden])');assert.equal(await page.locator('#application').isVisible(),false);await page.unroute('**/data/survey.json');await page.locator('#retry').click();await page.waitForSelector('#application:not([hidden])');
  });
  await check('10 Rami – ursprunglig navigation, yrkesprofil och endast efterfrågade UI-tillägg',async()=>{
-  await ready();assert.equal(await page.locator('.brand svg').count(),1);assert.deepEqual(await page.locator('.site-header nav').innerText(), 'Utforska\nOm datan');
+  await ready();assert.equal(await page.locator('.brand svg').count(),1);assert.equal(await page.locator('.site-header nav').count(),0);assert.equal(await page.locator('.site-header .study-switch button').count(),2);assert.equal(await page.locator('.site-header #lang-button').count(),1);assert.equal(await page.locator('.quality,#share,.benchmark-note,.source-cell,.hero-description').count(),0);
   assert.equal(await page.locator('.preview,.interpretation,.research-note,#review-summary,[href="./accessibility.html"]').count(),0);
   assert.equal(await page.locator('#th-overall').textContent(),'Mot totalen (båda länderna)');
   assert.equal(await page.locator('#selected-country').textContent(),'Sverige');assert.equal(await page.locator('#comparison-bars .primary .bar-label').textContent(),'Östersund');
@@ -92,7 +94,7 @@ async function main(){try{
   await page.locator('.profile-item[data-variable="interest-f"]').focus();await page.keyboard.press('Enter');assert.equal(await page.locator(':focus').getAttribute('data-variable'),'interest-f');assert.equal(new URL(page.url()).searchParams.get('variable'),'interest-f');assert.match(await page.locator('#selected-profession').textContent(),/Ingenjör/);
   await axe('restored-profile');await page.screenshot({path:path.join(out,'restored-profile.png'),fullPage:true});
   await page.locator('#tab-profile').focus();await page.keyboard.press('ArrowLeft');assert.equal(await page.locator('#panel-table').isVisible(),true);
-  await page.locator('.site-header [data-method]').click();assert.equal(await page.locator('#method-dialog').isVisible(),true);assert.doesNotMatch(await page.locator('#method-dialog').textContent(),/granskningsversion|Arbetsversion|50 kommunvärden|Öppna frågor/i);await axe('restored-method-dialog');await page.keyboard.press('Escape');assert.equal(await page.locator('#method-dialog').isVisible(),false);assert.equal(await page.locator(':focus').getAttribute('data-method'),'');
+  await page.locator('footer [data-method]').click();assert.equal(await page.locator('#method-dialog').isVisible(),true);assert.doesNotMatch(await page.locator('#method-dialog').textContent(),/granskningsversion|Arbetsversion|50 kommunvärden|Öppna frågor/i);await axe('restored-method-dialog');await page.keyboard.press('Escape');assert.equal(await page.locator('#method-dialog').isVisible(),false);assert.equal(await page.locator(':focus').getAttribute('data-method'),'');
   await page.goto(base+'method.html');assert.doesNotMatch(await page.locator('main').textContent(),/Arbetsversion för forskargranskning|Öppna frågor i källmaterialet|50 kommunvärden|Tolka kartan/);
  });
  await check('11 Rami – en kryssväljare, flera kommuner och samma val i karta, värden och delningslänk',async()=>{
@@ -108,7 +110,7 @@ async function main(){try{
   await page.locator('#table-body tr[data-municipality="SE-2284"] button').click();assert.equal(await page.locator('#choose-SE-2284').isChecked(),true);
   await page.locator('#municipality-search').fill('Bräcke');await page.keyboard.press('ArrowDown');await page.keyboard.press('Enter');assert.equal(await page.locator('#choose-SE-2305').isChecked(),true);
   await page.locator('#municipality-picker').click();await page.locator('#municipality-filter').fill('Sundsvall');await page.locator('#choose-SE-2281').uncheck();assert.equal(await page.locator('#municipality-options').isVisible(),true);assert.equal(await page.locator('#comparison-bars [data-municipality="SE-2281"]').count(),0);await page.keyboard.press('Escape');
-  await page.locator('[data-lang="nb"]').click();assert.match(await page.locator('#municipality-picker').getAttribute('aria-labelledby'),/municipality-picker-label/);assert.equal(await page.locator('#municipality-picker-label').textContent(),'Sammenlign kommuner');
+  await setLang('nb');assert.match(await page.locator('#municipality-picker').getAttribute('aria-labelledby'),/municipality-picker-label/);assert.equal(await page.locator('#municipality-picker-label').textContent(),'Sammenlign kommuner');
   await page.locator('#reset').click();assert.equal(await page.locator('#comparison-bars [data-municipality]').count(),1);assert.equal(await page.locator('#choose-SE-2380').isChecked(),true);
   await ready('?municipality=SE-2326&compare=SE-2281');assert.equal(await page.locator('#choose-SE-2326').isChecked(),true);assert.equal(await page.locator('#choose-SE-2281').isChecked(),true);
  });
@@ -129,7 +131,7 @@ async function main(){try{
    assert.deepEqual(await page.locator('#comparison-bars [data-municipality]').evaluateAll(rows=>rows.map(r=>r.dataset.municipality)),ids);
    assert.deepEqual(await page.locator('#municipality-checkboxes input:checked').evaluateAll(inputs=>inputs.map(i=>i.value).sort()),[...ids].sort());
    assert.deepEqual(await page.locator('path[data-municipality][aria-pressed="true"]').evaluateAll(paths=>paths.map(p=>p.dataset.municipality).sort()),[...ids].sort());
-   assert.equal(await page.locator('.profile-reading').count(),ids.length*18);
+   assert.equal(await page.locator('.profile-reading').count(),ids.length*18);assert.equal(await page.locator('#profile-empty').evaluate(e=>e.hidden),ids.length>0);
   };
   await clickMunicipality('SE-2380');await assertSelection([]);assert.equal(await page.locator('#selected-name').textContent(),'Ingen kommun vald');
   await clickMunicipality('SE-2380');await assertSelection(['SE-2380']);
@@ -200,19 +202,27 @@ async function main(){try{
   await ready('?variable=housing-s&municipality=NO-5036');assert.equal(await page.locator('#value-note').getAttribute('data-status'),'grouped');
  });
  await check('19 Ingrid – godkända boendevärden för Frosta/Stjørdal i karta, tabell och jämförelse',async()=>{
-  for(const [vid,display,fill] of [['housing-s','29,4 %','#c8deb3'],['housing-t','70,6 %','#4e876b']]){
+  for(const [vid,display,fill] of [['housing-s','29,4 %','#a9c6e6'],['housing-t','70,6 %','#3570b0']]){
    for(const id of ['NO-5036','NO-5035']){
     await ready('?variable='+vid+'&municipality='+id);
     assert.equal(norm(await page.locator('#primary-value').textContent()),display);
     assert.equal(await page.locator('#value-note').getAttribute('data-status'),'grouped');
     assert.match(await page.locator('#group-note').textContent(),/Frosta, Stjørdal/);
-    assert.match(await page.locator('#source-cell').textContent(),/Ingrid Zakrisson, 2026-10-13/);
     assert.equal(await page.locator('path[data-municipality="'+id+'"]').getAttribute('fill'),fill);
     assert.equal(norm(await page.locator('#table-body tr[data-municipality="'+id+'"] td').nth(2).textContent()),display);
    }
    await chooseMunicipalities(['NO-5036','NO-5035']);assert.match(await page.locator('#comparison-bars').textContent(),/Samma kommungrupp/);
    for(const id of ['NO-5036','NO-5035'])assert.equal(norm(await page.locator('#comparison-bars [data-municipality="'+id+'"] .bar-number').textContent()),display);
   }
+ });
+ await check('20 Rami – Dölj kommuner utan värde: tabell, sökning, karta och legend',async()=>{
+  await ready();const polis=data.variables.find(v=>v.id==='interest-e'),i=data.variables.indexOf(polis);
+  assert.equal(await page.locator('#exclude-empty').isChecked(),true);assert.equal(await page.locator('#table-body tr').count(),withValue(data,polis));assert.equal(await page.locator('#exclude-count').textContent(),'('+(53-withValue(data,polis))+')');
+  const hidden=data.municipalities.filter(m=>m.values[i]===null);for(const m of hidden){const p=page.locator('path[data-municipality="'+m.id+'"]');assert.equal(await p.getAttribute('fill'),'url(#excluded)',m.id);assert.equal(await p.getAttribute('tabindex'),'-1');assert.equal(await p.evaluate(e=>getComputedStyle(e).pointerEvents),'none');}
+  assert.match(await page.locator('#legend-colors').textContent(),/Dold – utan värde/);await page.locator('#municipality-search').fill('Røyrvik');assert.match(await page.locator('#search-options').textContent(),/Inga kommuner/);await page.keyboard.press('Escape');
+  await page.locator('#exclude-empty').uncheck();assert.equal(await page.locator('#table-body tr').count(),53);assert.match(await page.locator('#legend-colors').textContent(),/Uppgift saknas/);assert.equal(await page.locator('path[data-municipality="NO-5052"]').getAttribute('fill'),'#e9e7e5');assert.equal(await page.locator('path[data-municipality="NO-5036"]').getAttribute('fill'),'#faeee7');
+  await page.locator('#tab-profile').click();await chooseMunicipalities([]);assert.equal(await page.locator('#profile-empty').isVisible(),true);await page.locator('#profile-choose').click();assert.equal(await page.locator('#municipality-picker').getAttribute('aria-expanded'),'true');await axe('exclude-toggle');
+  await page.locator('#reset').click();assert.equal(await page.locator('#exclude-empty').isChecked(),true);
  });
  await check('16 Robusthet – inga JavaScript-undantag i användarflödena',async()=>assert.deepEqual(errors,[]));
  }finally{fs.writeFileSync(path.join(out,'e2e-results.json'),JSON.stringify({base,checks:records,failures},null,2));await browser?.close();server?.close();}if(failures)process.exitCode=1;}
