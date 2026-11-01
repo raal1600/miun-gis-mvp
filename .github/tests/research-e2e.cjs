@@ -152,8 +152,8 @@ async function main(){try{
  });
  await check('14 Barbro – kartinformation går att hovra, läsa med fokus och stänga med Escape',async()=>{
   await page.setViewportSize({width:1366,height:768});await ready('?variable=interest-d&municipality=SE-2326');
-  const polygon=page.locator('path[data-municipality="SE-2326"]'),url=page.url();
-  const point=await polygon.evaluate(p=>{const r=p.getBoundingClientRect();for(let y=r.top+1;y<r.bottom;y+=2)for(let x=r.left+1;x<r.right;x+=2)if(document.elementFromPoint(x,y)===p)return{x,y};});assert.ok(point);await page.mouse.move(point.x,point.y);const tooltip=page.locator('#'+await polygon.getAttribute('aria-describedby'));
+  const polygon=page.locator('path[data-municipality="SE-2326"]'),url=page.url();await polygon.scrollIntoViewIfNeeded();
+  const point=await polygon.evaluate(p=>{const r=p.getBoundingClientRect();for(let y=Math.max(0,r.top)+1;y<Math.min(innerHeight,r.bottom);y+=2)for(let x=Math.max(0,r.left)+1;x<Math.min(innerWidth,r.right);x+=2)if(document.elementFromPoint(x,y)===p)return{x,y};});assert.ok(point);await page.mouse.move(point.x,point.y);const tooltip=page.locator('#'+await polygon.getAttribute('aria-describedby'));
   await tooltip.waitFor({state:'visible'});assert.match(await tooltip.textContent(),/Berg, Härjedalen/);
   assert.equal(await tooltip.evaluate(e=>getComputedStyle(e).pointerEvents),'auto');
   await tooltip.hover();await page.waitForTimeout(500);assert.equal(await tooltip.isVisible(),true,'Pointer can remain over the tooltip');
