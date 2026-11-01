@@ -1,9 +1,9 @@
 {
-  "release": "b9b158f120dd6dcac7a5b5b0b0ac008708017c8e868e84466a9b8e311edc2cfa",
+  "release": "7bf4a77429f8d26b3b7e2add48a2fb308a1e093f53abbda167c61c0ac4215461",
   "sourceWorkbookSha256": "b1b000ec2b1770ef29157005fb321d331617de540c086753b96e444f8043c5b3",
   "files": {
     ".nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "app.js": "103f357bcee51f6e6f303b91dffd4d100b5247e1231a2e3a30bd7af79a807c4e",
+    "app.js": "2ccc40e5436c69de64dea8b85d5ab62c605818dc2b96d4d428e09035fe9b3dff",
     "assets/interreg-eu.png": "83c0f8edfd21fcfe4b2344823172d32cb51b00c5586745a5ac82b15f07196f38",
     "assets/miun.png": "2552c5d1f5b05764bb1dc7720ef6af5a91060270e83cb7832b7b7af8c1d33a00",
     "assets/nord.png": "2e706587e902ed7ca99cd439160dbfcfb97eb69ef18dac910041058ba13c3677",
@@ -13,7 +13,7 @@
     "favicon.svg": "be51c8e743afd48bd28b3aa5c3847b6b0881ac8cb26f5eaf2a422e8884ae3d4b",
     "index.html": "231ca2e3462a73f657d24668e5cab847ec1b9d0c9d78b2aa6aa3b88c283a6e80",
     "method.html": "7a885326e7314d91505be260f9ca9afef557f89995fdb276c61a3ce402347c74",
-    "style.css": "70576107c73a38295859c0a316b7e714c7208129c52e88509d16507fdc10eab8",
+    "style.css": "6c2a93f390bdfaa58e033ac9cdef0837eaf7f1ae5dd62d571f515bb268fa5eb1",
     "vendor/Leaflet-LICENSE": "53e8dc25862014e4324741ca18fbe3611e11d42ef69f59f86ea8c5389647d4cb",
     "vendor/leaflet.css": "a7837102824184820dfa198d1ebcd109ff6d0ff9a2672a074b9a1b4d147d04c6",
     "vendor/leaflet.js": "dc71f8a6880bc3ca1bd9fa8dc5f1af48c702dc510b0a78240a07c5feed7ce935"
