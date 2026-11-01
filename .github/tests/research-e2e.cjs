@@ -1,7 +1,7 @@
 /* Shared by private source CI and the public release gate. Runs against built files. */
 const {chromium}=require('playwright');const AxeBuilder=require('@axe-core/playwright').default;
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),http=require('node:http'),crypto=require('node:crypto');
-const root=path.resolve(process.env.SITE_ROOT||'dist/runtime-root/mvp'),out=path.resolve(process.env.RESULTS_DIR||'mvp/test-results');fs.mkdirSync(out,{recursive:true});
+const root=path.resolve(process.env.SITE_ROOT||'dist/site'),out=path.resolve(process.env.RESULTS_DIR||'test-results');fs.mkdirSync(out,{recursive:true});
 let server,browser,page,base=process.env.BASE_URL,failures=0;const records=[];
 const colors=['#eff3dc','#c8deb3','#90bb93','#4e876b','#164f47'];
 async function check(name,fn){try{await fn();records.push({name,status:'passed'});console.log('PASS '+name);}catch(e){failures++;records.push({name,status:'failed',error:e.stack});console.error('FAIL '+name+'\n'+e.stack);await page?.screenshot({path:path.join(out,'failure-'+failures+'.png'),fullPage:true}).catch(()=>{});}}
