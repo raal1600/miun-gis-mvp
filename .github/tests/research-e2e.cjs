@@ -5,6 +5,11 @@ const root=path.resolve(process.env.SITE_ROOT||'dist/site'),out=path.resolve(pro
 let server,browser,page,base=process.env.BASE_URL,failures=0;const records=[];
 const colors=['#dbe8f5','#a9c6e6','#6f9ed0','#3570b0','#0d4a86'];
 const withValue=(data,v,country='all')=>{const i=data.variables.indexOf(v);return data.municipalities.filter(m=>(country==='all'||m.country===country)&&m.values[i]!==null&&['observed','grouped'].includes(m.statuses[i])).length;};
+// Listbox selectors (category, topic, measure, sex, country).
+const picked=async id=>page.locator('#'+id).getAttribute('data-value');
+async function pick(id,value){if(await picked(id)===value)return;await page.locator('#'+id).click();await page.locator('#'+id+'-options [data-value="'+value+'"]').click();}
+async function pickLabel(id,label){await page.locator('#'+id).click();await page.locator('#'+id+'-options [role=option]',{hasText:label}).first().click();}
+const optionTexts=id=>page.locator('#'+id+'-options [role=option]').allTextContents();
 async function setLang(lang){await page.locator('#lang-button').click();await page.locator('#lang-options [data-lang="'+lang+'"]').click();}
 async function check(name,fn){try{await fn();records.push({name,status:'passed'});console.log('PASS '+name);}catch(e){failures++;records.push({name,status:'failed',error:e.stack});console.error('FAIL '+name+'\n'+e.stack);await page?.screenshot({path:path.join(out,'failure-'+failures+'.png'),fullPage:true}).catch(()=>{});}}
 async function ready(query=''){await page.goto(base+query);await page.waitForSelector('#application:not([hidden])');if(!query.includes('study=cohort'))await page.waitForSelector('path[data-municipality]');}
@@ -37,9 +42,9 @@ async function main(){try{
  });
  const data=await (await context.request.get(base+'data/survey.json')).json();
  await check('02 Ingrid – karta och samtliga 162 mått visar rätt kommunvärden',async()=>{
-  await ready();await page.locator('#exclude-empty').uncheck();assert.equal(await page.locator('#category option').count(),6);assert.equal(await page.locator('path[data-municipality]').count(),53);assert.equal(await page.locator('#primary-value').textContent(),'3,18');
+  await ready();await page.locator('#exclude-empty').uncheck();assert.equal(await page.locator('#category-options [role=option]').count(),6);assert.equal(await page.locator('path[data-municipality]').count(),53);assert.equal(await page.locator('#primary-value').textContent(),'3,18');
   for(const v of data.variables){
-   for(const [key,val] of [['category',v.category==='business'&&v.measure!=='interest'?'business-image':v.category],['topic',v.topic],['measure',v.measure],['sex',v.sex]])if(await page.locator('#'+key).inputValue()!==val)await page.locator('#'+key).selectOption(val);
+   for(const [key,val] of [['category',v.category==='business'&&v.measure!=='interest'?'business-image':v.category],['topic',v.topic],['measure',v.measure],['sex',v.sex]])await pick(key,val);
    assert.equal(new URL(page.url()).searchParams.get('variable'),v.id);
    const actual=await page.locator('#table-body tr').evaluateAll(rows=>Object.fromEntries(rows.map(r=>[r.dataset.municipality,[r.cells[2].textContent,r.cells[5].textContent,r.cells[4].textContent]])));
    const fills=await page.locator('path[data-municipality]').evaluateAll(paths=>Object.fromEntries(paths.map(p=>[p.dataset.municipality,p.getAttribute('fill')])));
@@ -57,12 +62,12 @@ async function main(){try{
   await ready();await page.keyboard.press('Tab');assert.equal(await page.locator(':focus').getAttribute('class'),'skip');await page.keyboard.press('Enter');assert.equal(await page.locator(':focus').getAttribute('id'),'results');
   await page.locator('#municipality-search').focus();await page.keyboard.type('Berg');await page.keyboard.press('ArrowDown');assert.equal(await page.locator('#municipality-search').getAttribute('aria-activedescendant'),'option-0');await page.keyboard.press('Enter');assert.equal(await page.locator('#selected-name').textContent(),'Berg');assert.equal(await page.locator(':focus').getAttribute('id'),'results');
   await page.locator('path[data-municipality="SE-2380"]').focus();await page.keyboard.press('Enter');assert.equal(await page.locator('#choose-SE-2380').isChecked(),false);assert.equal(await page.locator('#selected-name').textContent(),'Berg');
-  const polis=data.variables.find(v=>v.id==='interest-e');await page.locator('#country').selectOption('SE');assert.equal(await page.locator('#table-body tr').count(),withValue(data,polis,'SE'));assert.equal(await page.locator('path[data-municipality]').count(),15);await page.locator('#table-search').fill('Berg');assert.equal(await page.locator('#table-body tr').count(),1);await page.locator('#table-search').fill('');await page.locator('[data-sort="value"]').click();assert.equal(await page.locator('#th-value').getAttribute('aria-sort'),'ascending');
+  const polis=data.variables.find(v=>v.id==='interest-e');await pick('country','SE');assert.equal(await page.locator('#table-body tr').count(),withValue(data,polis,'SE'));assert.equal(await page.locator('path[data-municipality]').count(),15);await page.locator('#table-search').fill('Berg');assert.equal(await page.locator('#table-body tr').count(),1);await page.locator('#table-search').fill('');await page.locator('[data-sort="value"]').click();assert.equal(await page.locator('#th-value').getAttribute('aria-sort'),'ascending');
   await page.locator('#reset').click();assert.equal(await page.locator('#table-body tr').count(),withValue(data,polis));await page.locator('#municipality-search').fill('xyz123');assert.match(await page.locator('#search-options').textContent(),/Inga kommuner/);await page.keyboard.press('Escape');assert.equal(await page.locator('#search-options').isVisible(),false);
  });
  await check('05 Dataleverans – procent, kön, norska, delningslänk och tom kohort',async()=>{
-  await ready('?variable=housing-h&municipality=SE-2326');assert.equal(await page.locator('#sex').inputValue(),'men');assert.match(await page.locator('#primary-value').textContent(),/%/);assert.match(await page.locator('#table-body tr').first().textContent(),/procentenheter/);
-  await setLang('nb');assert.equal(await page.locator('html').getAttribute('lang'),'nb');assert.equal(await page.locator('#sex option:checked').textContent(),'Gutter');const url=page.url();await page.reload();await page.waitForSelector('#application:not([hidden])');assert.equal(page.url(),url);assert.match(await page.locator('#legend-title').textContent(),/prosent/);
+  await ready('?variable=housing-h&municipality=SE-2326');assert.equal(await picked('sex'),'men');assert.match(await page.locator('#primary-value').textContent(),/%/);assert.match(await page.locator('#table-body tr').first().textContent(),/procentenheter/);
+  await setLang('nb');assert.equal(await page.locator('html').getAttribute('lang'),'nb');assert.equal(await page.locator('#sex-value').textContent(),'Gutter');const url=page.url();await page.reload();await page.waitForSelector('#application:not([hidden])');assert.equal(page.url(),url);assert.match(await page.locator('#legend-title').textContent(),/prosent/);
   await page.locator('[data-study="cohort"]').click();assert.equal(await page.locator('#survey-panel').isVisible(),false);assert.equal(await page.locator('#filters').isVisible(),false);assert.equal(await page.locator('.intro-card').isVisible(),false);assert.equal(await page.evaluate(()=>{const f=document.querySelector('footer').getBoundingClientRect();return Math.round(f.bottom)>=innerHeight-1;}),true,'footer at the bottom');assert.match(await page.locator('#cohort-panel').textContent(),/ennå ikke tilgjengelige/);assert.equal(await page.locator('.study-context').isVisible(),false);await page.reload();await page.waitForSelector('#cohort-panel:not([hidden])');assert.equal(await page.locator('#survey-panel').isVisible(),false);
  });
  await check('06 Ingrid – hela kartan på laptop, mobil 320/390 px och EU-emblemets storlek',async()=>{
@@ -103,8 +108,8 @@ async function main(){try{
   const assertValues=async v=>{const i=data.variables.indexOf(v);assert.equal(await page.locator('#comparison-bars [data-municipality]').count(),ids.length);for(const id of ids){const m=data.municipalities.find(m=>m.id===id);assert.equal(norm(await page.locator('#comparison-bars [data-municipality="'+id+'"] .bar-number').textContent()),value(m.values[i],v));}};
   await assertValues(data.variables.find(v=>v.id==='interest-e'));
   const url=page.url();await page.reload();await page.waitForSelector('#application:not([hidden])');assert.equal(page.url(),url);assert.equal(new URL(page.url()).searchParams.get('municipalities'),ids.join(','));
-  await page.locator('#category').selectOption('housing');await page.locator('#sex').selectOption('men');await assertValues(data.variables.find(v=>v.id===new URL(page.url()).searchParams.get('variable')));
-  for(const country of ['NO','SE','all']){await page.locator('#country').selectOption(country);assert.equal(new URL(page.url()).searchParams.get('municipalities'),ids.join(','));await assertValues(data.variables.find(v=>v.id===new URL(page.url()).searchParams.get('variable')));}
+  await pick('category','housing');await pick('sex','men');await assertValues(data.variables.find(v=>v.id===new URL(page.url()).searchParams.get('variable')));
+  for(const country of ['NO','SE','all']){await pick('country',country);assert.equal(new URL(page.url()).searchParams.get('municipalities'),ids.join(','));await assertValues(data.variables.find(v=>v.id===new URL(page.url()).searchParams.get('variable')));}
   await page.locator('#tab-profile').click();assert.equal(await page.locator('.profile-item').count(),18);for(const v of data.variables.filter(v=>v.category==='interest'&&Number(v.topic.split('-')[1])<18)){const i=data.variables.indexOf(v);for(const id of ids)assert.equal(norm(await page.locator('.profile-item[data-variable="'+v.id+'"] [data-municipality="'+id+'"] strong').textContent()),value(data.municipalities.find(m=>m.id===id).values[i],v));}
   await page.locator('#tab-table').click();await page.locator('path[data-municipality="SE-2380"]').focus();await page.keyboard.press('Enter');assert.equal(await page.locator('#choose-SE-2380').isChecked(),true);assert.equal(await page.locator('#comparison-bars [data-municipality]').count(),4);
   await page.locator('#table-body tr[data-municipality="SE-2284"] button').click();assert.equal(await page.locator('#choose-SE-2284').isChecked(),true);
@@ -119,7 +124,7 @@ async function main(){try{
   await page.keyboard.type('Berg');assert.equal(await page.locator('.municipality-option:visible').count(),1);await page.keyboard.press('Tab');assert.equal(await page.locator(':focus').getAttribute('id'),'choose-SE-2326');await page.keyboard.press('Space');assert.equal(await page.locator('#choose-SE-2326').isChecked(),true);assert.equal(await page.locator(':focus').getAttribute('id'),'choose-SE-2326');assert.match(await page.locator('#announcer').textContent(),/Berg/);await axe('multi-picker-open');
   await page.keyboard.press('Escape');assert.equal(await page.locator('#municipality-options').isVisible(),false);assert.equal(await page.locator(':focus').getAttribute('id'),'municipality-picker');
   await page.locator('#municipality-picker').click();await page.locator('#municipality-filter').fill('xyz123');assert.equal(await page.locator('#municipality-no-match').isVisible(),true);await page.locator('#municipality-filter').fill('');await page.locator('#clear-municipalities').click();assert.equal(await page.locator('#comparison-bars [data-municipality]').count(),0);assert.equal(await page.locator('#primary-value').textContent(),'—');await page.locator('#close-municipalities').click();await page.reload();await page.waitForSelector('#application:not([hidden])');assert.equal(await page.locator('#municipality-picker-value').textContent(),'Välj kommuner');assert.equal(await page.locator('#comparison-bars [data-municipality]').count(),0);await axe('no-selection');
-  await chooseMunicipalities(['SE-2326','SE-2361','NO-5036','NO-5052']);assert.match(await page.locator('#comparison-bars').textContent(),/Under granskning/);assert.match(await page.locator('#comparison-bars').textContent(),/Inga deltagare/);await page.locator('#topic').selectOption('occupation-0');assert.match(await page.locator('#comparison-bars').textContent(),/Samma kommungrupp/);await axe('multi-group');
+  await chooseMunicipalities(['SE-2326','SE-2361','NO-5036','NO-5052']);assert.match(await page.locator('#comparison-bars').textContent(),/Under granskning/);assert.match(await page.locator('#comparison-bars').textContent(),/Inga deltagare/);await pick('topic','occupation-0');assert.match(await page.locator('#comparison-bars').textContent(),/Samma kommungrupp/);await axe('multi-group');
   for(const width of [390,320]){await page.setViewportSize({width,height:740});await page.locator('#municipality-picker').scrollIntoViewIfNeeded();await page.locator('#municipality-picker').click();await page.locator('#municipality-filter').fill('Trondheim');await page.locator('#choose-NO-5001').check();const panel=await page.locator('#municipality-options').boundingBox();assert.ok(panel.x>=0&&panel.x+panel.width<=width);assert.ok(panel.y>=0&&panel.y+panel.height<=740,JSON.stringify(panel));assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await axe('multi-mobile-'+width);await page.screenshot({path:path.join(out,'multi-picker-'+width+'.png'),fullPage:true});await page.locator('#close-municipalities').click();}
   await page.setViewportSize({width:1366,height:768});
   await ready('?municipalities='+data.municipalities.map(m=>m.id).join(','));assert.equal(await page.locator('#comparison-bars [data-municipality]').count(),53);await page.locator('#municipality-picker').click();assert.equal(await page.locator('#municipality-checkboxes input:checked').count(),53);await page.locator('#clear-municipalities').click();await page.locator('#choose-SE-2380').check();await page.locator('#choose-SE-2380').uncheck();assert.equal(await page.locator('#comparison-bars [data-municipality]').count(),0);await page.locator('#close-municipalities').click();
@@ -167,7 +172,7 @@ async function main(){try{
   for(const lang of ['sv','nb']){
    await page.setViewportSize({width:320,height:740});await ready('?lang='+lang);
    await page.addStyleTag({content:'*{line-height:1.5!important;letter-spacing:.12em!important;word-spacing:.16em!important}p{margin-bottom:2em!important}'});
-   for(const category of data.categories){await page.locator('#category').selectOption(category.id);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,lang+' '+category.id);}
+   for(const category of data.categories){await pick('category',category.id);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,lang+' '+category.id);}
    for(const button of await page.locator('.study-switch button').all()){const r=await button.boundingBox();assert.ok(r.x>=0&&r.x+r.width<=320);assert.equal(await button.evaluate(e=>e.scrollHeight<=e.clientHeight+1),true);}
    await page.locator('#municipality-picker').click();await page.locator('#municipality-filter').fill('Trondheim');await page.locator('#choose-NO-5001').check();await page.locator('#close-municipalities').click();
    assert.equal(await page.locator('#comparison-bars [data-municipality="NO-5001"]').count(),1);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
@@ -178,17 +183,17 @@ async function main(){try{
   await page.setViewportSize({width:1366,height:768});
  });
  await check('17 Ingrid – intresse och bilden av företagande är separata val',async()=>{
-  await ready();await page.locator('#category').selectOption({label:'Intresse att driva företag'});
-  assert.deepEqual(await page.locator('#measure option').allTextContents(),['Intresse']);
-  await page.locator('#category').selectOption({label:'Bilden av företagande'});
-  assert.deepEqual(await page.locator('#measure option').allTextContents(),['Agens','Välvilja','Ledarskap']);
+  await ready();await pickLabel('category','Intresse att driva företag');
+  assert.deepEqual(await optionTexts('measure'),['Intresse']);
+  await pickLabel('category','Bilden av företagande');
+  assert.deepEqual(await optionTexts('measure'),['Agens','Välvilja','Ledarskap']);
   for(const measure of ['agency','communality','leadership']){
-   await page.locator('#measure').selectOption(measure);
+   await pick('measure',measure);
    assert.notEqual(await page.locator('#primary-value').textContent(),'—');
    const url=page.url();await page.reload();await page.waitForSelector('#application:not([hidden])');
-   assert.equal(page.url(),url);assert.equal(await page.locator('#category').inputValue(),'business-image');assert.equal(await page.locator('#measure').inputValue(),measure);
+   assert.equal(page.url(),url);assert.equal(await picked('category'),'business-image');assert.equal(await picked('measure'),measure);
   }
-  await page.locator('#category').selectOption('business');assert.equal(await page.locator('#measure').inputValue(),'interest');
+  await pick('category','business');assert.equal(await picked('measure'),'interest');
  });
  await check('18 Ingrid – skattningsstaplar 1–5 och procentstaplar 0–100',async()=>{
   for(const id of ['interest-e','business-v','housing-s']){
