@@ -1,5 +1,5 @@
 {
-  "release": "40575ec4341ca71888a869f53b0bed9cc1f9fab1d4757636d184d7f90b339c5d",
+  "release": "02b60a31cef7e96bfdcff56f4108df2795f29a199e6eaed3a164aedd253be0d3",
   "sourceWorkbookSha256": "b1b000ec2b1770ef29157005fb321d331617de540c086753b96e444f8043c5b3",
   "files": {
     ".nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -11,9 +11,9 @@
     "data/map-context.geojson": "b58c9ea49a186a2828ac75f8276661d6ceb92c1c9239a4fd03883cbd27cda51c",
     "data/survey.json": "ae455b2359bb58e1a567bac579cd4a41969b605230817fd7f9f55a6b99836473",
     "favicon.svg": "be51c8e743afd48bd28b3aa5c3847b6b0881ac8cb26f5eaf2a422e8884ae3d4b",
-    "index.html": "6c5a1b8e1db265472bd2c7b2b1797ecf6357eeed68c885a5d9d6c7a3276a2a3c",
+    "index.html": "e63d71aad9874a50cec15a7b322f8ca4d6b52c06a70d122f9d0f99a9a017371d",
     "method.html": "7a885326e7314d91505be260f9ca9afef557f89995fdb276c61a3ce402347c74",
-    "style.css": "c35a8a94a3a6764f43fb5273c421295210a6d0c6a0e7dc28f99b389990d5fc0d",
+    "style.css": "df5666f4a8f3762e6b051ae1ed9a0d4f0d56ba5f8fec009bc21e5dae5e5147fb",
     "vendor/Leaflet-LICENSE": "53e8dc25862014e4324741ca18fbe3611e11d42ef69f59f86ea8c5389647d4cb",
     "vendor/leaflet.css": "a7837102824184820dfa198d1ebcd109ff6d0ff9a2672a074b9a1b4d147d04c6",
     "vendor/leaflet.js": "dc71f8a6880bc3ca1bd9fa8dc5f1af48c702dc510b0a78240a07c5feed7ce935"
